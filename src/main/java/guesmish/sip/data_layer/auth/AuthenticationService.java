@@ -49,12 +49,14 @@ public class AuthenticationService {
         String name= user.getName();
         String address = user.getAddress();
         Integer id = user.getId();
+        String message="Register Success";
         return AuthenticationResponse.builder()
                 .token(jwtToken)
                 .role(role)
                 .id(id)
                 .address(address)
                 .name(name)
+                .message(message)
                 .build();
 
     }
@@ -83,6 +85,7 @@ public class AuthenticationService {
             String name= user.getName();
             String address = user.getAddress();
             Integer id = user.getId();
+            String message="Login Success";
             AuthenticationResponse response = AuthenticationResponse.builder()
 
                     .token(jwtToken)
@@ -90,6 +93,7 @@ public class AuthenticationService {
                     .id(id)
                     .address(address)
                     .name(name)
+                    .message(message)
                     .build();
             return response;
         }

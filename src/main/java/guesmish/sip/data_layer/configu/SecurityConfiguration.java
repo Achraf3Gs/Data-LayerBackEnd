@@ -35,7 +35,7 @@ public class SecurityConfiguration {
                                 "/main**", "/favicon.png", "/assets/foods/**", "/assets/stars/**").permitAll()
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/authenticate").permitAll()
                         .requestMatchers("/login").permitAll()
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+
                         .requestMatchers("/api/v1/auth/foods", "/api/v1/auth/foods/tags").permitAll()
                         .anyRequest().authenticated()
                 )
