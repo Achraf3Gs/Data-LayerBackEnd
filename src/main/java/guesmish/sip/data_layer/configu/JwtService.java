@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
+import java.security.SignatureException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -75,21 +76,18 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    private Claims  extractAllClaims(String token) {
+    private Claims extractAllClaims(String token) {
         try {
-            return Jwts
-                    .parserBuilder()
+            return Jwts.parserBuilder()
                     .setSigningKey(getSignInKey())
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
         } catch (Exception ex) {
-            // Handle parsing exceptions
-            ex.printStackTrace(); // Log the exception for debugging
-            // You can throw a custom exception or return null indicating failure to parse
-            // Throw an exception or return a default Claims object depending on your logic
-            return null;
+            System.out.println("Error parsing JWT: " + ex.getMessage());
+            ex.printStackTrace();
         }
+        return null;
     }
 
 

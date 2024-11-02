@@ -1,6 +1,9 @@
 package guesmish.sip.data_layer.auth;
 
 import guesmish.sip.data_layer.configu.JwtService;
+import guesmish.sip.data_layer.token.Token;
+import guesmish.sip.data_layer.token.TokenRepository;
+import guesmish.sip.data_layer.token.TokenType;
 import guesmish.sip.data_layer.users.Role;
 import guesmish.sip.data_layer.users.User;
 import guesmish.sip.data_layer.users.UserRepository;
@@ -10,12 +13,16 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+;
+
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
 
 
     private final UserRepository repository;
+
+    private final TokenRepository tokenrepository;
 
     private final PasswordEncoder passwordEncoder;
 
@@ -41,10 +48,10 @@ public class AuthenticationService {
                 .confirmPassword(passwordEncoder.encode(request.getConfirmPassword()))
                 .role(Role.USER)
                 .build();
-        repository.save(user);
+        var savedUser= repository.save(user);
         var jwtToken= jwtService.generateToken((User) user);
-
-
+        revokeAllUserTokens(user);
+        savedUserToken(savedUser, jwtToken);
         Role role = user.getRole();
         String name= user.getName();
         String address = user.getAddress();
@@ -61,7 +68,28 @@ public class AuthenticationService {
 
     }
 
+    private void savedUserToken(User user, String jwtToken) {
+        var token= Token.builder()
+                .user(user)
+                .token(jwtToken)
+                .tokenType(TokenType.BEARER)
+                .expired(false)
+                .revoked(false)
+                .build();
+        tokenrepository.save(token);
+    }
+    private void revokeAllUserTokens(User user){
+        var validUserTokens= tokenrepository.findValidTokensByUser(user.getId());
+        if (validUserTokens.isEmpty()) {
+            return;
+        }
+        validUserTokens.forEach(t->{
+            t.setExpired(true);
+            t.setRevoked(true);
+        });
 
+        tokenrepository.saveAll(validUserTokens);
+    }
 
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
@@ -80,6 +108,8 @@ public class AuthenticationService {
             return response;
         } else {
             var jwtToken = jwtService.generateToken(user);
+            revokeAllUserTokens(user);
+            savedUserToken(user,jwtToken);
             String username = jwtService.extractUsername(jwtToken);
             Role role = user.getRole();
             String name= user.getName();

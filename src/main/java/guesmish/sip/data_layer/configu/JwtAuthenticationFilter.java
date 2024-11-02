@@ -1,5 +1,6 @@
 package guesmish.sip.data_layer.configu;
 
+import guesmish.sip.data_layer.token.TokenRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +24,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService ;
 
+    private final TokenRepository tokenrepository;
+
     private  final UserDetailsService userDetailsService;
 
     @Override
@@ -31,7 +34,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain)
             throws ServletException, IOException {
-        if (request.getServletPath().contains("/api/v1/auth")) {
+        if (request.getServletPath().equals("/login") ||
+                request.getServletPath().contains("/api/v1/auth") ||
+                request.getServletPath().equals("/favicon.ico")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -56,7 +61,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication()==null) {
             UserDetails userDetails =  this.userDetailsService.loadUserByUsername(userEmail);
-            if(jwtService.isTokenValid(jwt, userDetails)&& jwtService.isValidSecretAndClientKeys(secretKey, clientKey)) {
+            var isTokenVadDataBase=tokenrepository.findByToken(jwt)
+                    .map(t->!t.isExpired()&& !t.isRevoked())
+                    .orElse(false);
+            if(((jwtService.isTokenValid(jwt, userDetails)&& jwtService.isValidSecretAndClientKeys(secretKey, clientKey)))
+                    && isTokenVadDataBase) {
                 UsernamePasswordAuthenticationToken authToken= new UsernamePasswordAuthenticationToken(
                         userDetails,null, userDetails.getAuthorities());
                 authToken.setDetails(
