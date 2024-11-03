@@ -1,5 +1,6 @@
 package guesmish.sip.data_layer.auth;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import guesmish.sip.data_layer.configu.JwtService;
 import guesmish.sip.data_layer.token.Token;
 import guesmish.sip.data_layer.token.TokenRepository;
@@ -7,20 +8,27 @@ import guesmish.sip.data_layer.token.TokenType;
 import guesmish.sip.data_layer.users.Role;
 import guesmish.sip.data_layer.users.User;
 import guesmish.sip.data_layer.users.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-;
+;import java.io.IOException;
 
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
 
 
+
     private final UserRepository repository;
+    private  final UserDetailsService userDetailsService;
 
     private final TokenRepository tokenrepository;
 
@@ -50,6 +58,7 @@ public class AuthenticationService {
                 .build();
         var savedUser= repository.save(user);
         var jwtToken= jwtService.generateToken((User) user);
+        var refreshToken = jwtService.generaterefreshToken(user);
         revokeAllUserTokens(user);
         savedUserToken(savedUser, jwtToken);
         Role role = user.getRole();
@@ -58,7 +67,8 @@ public class AuthenticationService {
         Integer id = user.getId();
         String message="Register Success";
         return AuthenticationResponse.builder()
-                .token(jwtToken)
+                .accesstoken(jwtToken)
+                .refreshtoken(refreshToken)
                 .role(role)
                 .id(id)
                 .address(address)
@@ -108,6 +118,7 @@ public class AuthenticationService {
             return response;
         } else {
             var jwtToken = jwtService.generateToken(user);
+            var refreshToken = jwtService.generaterefreshToken(user);
             revokeAllUserTokens(user);
             savedUserToken(user,jwtToken);
             String username = jwtService.extractUsername(jwtToken);
@@ -118,7 +129,8 @@ public class AuthenticationService {
             String message="Login Success";
             AuthenticationResponse response = AuthenticationResponse.builder()
 
-                    .token(jwtToken)
+                    .accesstoken(jwtToken)
+                    .refreshtoken(refreshToken)
                     .role(role)
                     .id(id)
                     .address(address)
@@ -128,6 +140,40 @@ public class AuthenticationService {
             return response;
         }
     }
-}
 
+    public void refreshToken(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) throws IOException {
+        final String authHeader= request.getHeader("Authorization");
+        final String refreshToken;
+        final String userEmail;
+
+        if (authHeader == null ||!authHeader.startsWith("Bearer ")) {
+            return;
+        }
+        System.out.println("Authorization header: " + authHeader);
+
+        refreshToken = authHeader.substring(7);
+        userEmail= jwtService.extractUsername(refreshToken);
+        System.out.println(refreshToken);
+        System.out.println("Extracted email from refresh token: " + userEmail);
+        if (userEmail != null) {
+            var user = this.repository.findByEmail(userEmail)
+                    .orElseThrow();
+
+            UserDetails userDetails =  this.userDetailsService.loadUserByUsername(userEmail);
+            if (jwtService.isTokenValid(refreshToken,userDetails)){
+                var accessToken = jwtService.generateToken(user);
+                revokeAllUserTokens(user);
+                savedUserToken(user,accessToken);
+                var authResponse = AuthenticationResponse.builder()
+                        .accesstoken(accessToken)
+                        .refreshtoken(refreshToken)
+                        .build();
+                new ObjectMapper().writeValue(response.getOutputStream(), authResponse);
+            }
+        }
+    }
+}
 

@@ -21,6 +21,8 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfiguration {
 
 
+    private static final String[] WHITE_LISTE_URL = {"/", "/index.html", "/home", "/styles**", "/runtime**", "/polyfills**",
+            "/main**", "/favicon.ico", "/assets/**", "/*.js", "/*.css"};
     private  final JwtAuthenticationFilter jwtAuthFilter;
 
     private final AuthenticationProvider authenticationProvider;
@@ -35,9 +37,11 @@ public class SecurityConfiguration {
                 .cors(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index.html", "/home", "/styles**", "/runtime**", "/polyfills**",
-                                "/main**", "/favicon.ico", "/assets/**", "/*.js", "/*.css").permitAll()
-                        .requestMatchers("/api/v1/auth/register", "/api/v1/auth/authenticate").permitAll()
+                        .requestMatchers(WHITE_LISTE_URL).permitAll()
+                        .requestMatchers(
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/authenticate",
+                                "/api/v1/auth/refresh-token").permitAll()
                         .requestMatchers("/login").permitAll()
                         .requestMatchers("/Register").permitAll()
                         .anyRequest().authenticated()

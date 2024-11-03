@@ -52,7 +52,23 @@ public class JwtService {
                 .setClaims(claims)
                 .setSubject(String.format("%s",user.getEmail()))
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis()+1000*60*120))
+                .setExpiration(new Date(System.currentTimeMillis()+1000*60))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+
+    }
+    public String generaterefreshToken(User user) {
+        Map<String,Object> claims = new HashMap<>();
+        claims.put("id",user.getId()+"");
+        claims.put("name", user.getName());
+        claims.put("address", user.getAddress());
+        claims.put("role", user.getRole());
+        return Jwts
+                .builder()
+                .setClaims(claims)
+                .setSubject(String.format("%s",user.getEmail()))
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis()+1000*60*60*24))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
 
@@ -96,7 +112,7 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    boolean isValidSecretAndClientKeys(String secretKey, String clientKey) {
+   public boolean isValidSecretAndClientKeys(String secretKey, String clientKey) {
         // Implement your logic to validate the secret_key and client_key
         // Return true if they are valid, false if they are not
         return (secretKey != null && secretKey.equals(secret))

@@ -1,5 +1,6 @@
 package guesmish.sip.data_layer.auth;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import guesmish.sip.data_layer.users.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,7 +15,11 @@ public class AuthenticationResponse {
 
     private String message;
 
-    private String token;
+    @JsonProperty("access_Token")
+    private String accesstoken;
+
+    @JsonProperty("refresh_Token")
+    private String refreshtoken;
 
     private String name;
 
