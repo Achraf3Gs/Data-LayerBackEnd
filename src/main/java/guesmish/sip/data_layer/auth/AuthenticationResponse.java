@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Date;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -28,6 +30,9 @@ public class AuthenticationResponse {
     private Role role;
 
     private Integer id;
+
+    private Date accessTokenExpiration;
+    private Date refreshTokenExpiration;
 
 
 }

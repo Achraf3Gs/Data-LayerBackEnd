@@ -2,6 +2,8 @@ package guesmish.sip.data_layer.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import guesmish.sip.data_layer.configu.JwtService;
+import guesmish.sip.data_layer.refreshToken.RefreshToken;
+import guesmish.sip.data_layer.refreshToken.RefreshTokenRepository;
 import guesmish.sip.data_layer.token.Token;
 import guesmish.sip.data_layer.token.TokenRepository;
 import guesmish.sip.data_layer.token.TokenType;
@@ -20,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 ;import java.io.IOException;
+import java.util.Date;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +34,8 @@ public class AuthenticationService {
     private  final UserDetailsService userDetailsService;
 
     private final TokenRepository tokenrepository;
+
+    private final RefreshTokenRepository refreshtokenrepository;
 
     private final PasswordEncoder passwordEncoder;
 
@@ -59,8 +64,9 @@ public class AuthenticationService {
         var savedUser= repository.save(user);
         var jwtToken= jwtService.generateToken((User) user);
         var refreshToken = jwtService.generaterefreshToken(user);
-        revokeAllUserTokens(user);
+        //revokeAllUserTokens(user);
         savedUserToken(savedUser, jwtToken);
+        savedUserRefreshToken(savedUser, refreshToken);
         Role role = user.getRole();
         String name= user.getName();
         String address = user.getAddress();
@@ -88,6 +94,16 @@ public class AuthenticationService {
                 .build();
         tokenrepository.save(token);
     }
+    private void savedUserRefreshToken(User user, String jwtToken) {
+        var refreshToken= RefreshToken.builder()
+                .user(user)
+                .refreshToken(jwtToken)
+                .tokenType(TokenType.BEARER)
+                .expired(false)
+                .revoked(false)
+                .build();
+        refreshtokenrepository.save(refreshToken);
+    }
     private void revokeAllUserTokens(User user){
         var validUserTokens= tokenrepository.findValidTokensByUser(user.getId());
         if (validUserTokens.isEmpty()) {
@@ -100,6 +116,19 @@ public class AuthenticationService {
 
         tokenrepository.saveAll(validUserTokens);
     }
+    private void revokeAllUserRefreshTokens(User user){
+        var validUserRefreshTokens= refreshtokenrepository.findValidRefreshTokensByUser(user.getId());
+        if (validUserRefreshTokens.isEmpty()) {
+            return;
+        }
+        validUserRefreshTokens.forEach(t->{
+            t.setExpired(true);
+            t.setRevoked(true);
+        });
+
+        refreshtokenrepository.saveAll(validUserRefreshTokens);
+    }
+
 
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
@@ -120,8 +149,12 @@ public class AuthenticationService {
             var jwtToken = jwtService.generateToken(user);
             var refreshToken = jwtService.generaterefreshToken(user);
             revokeAllUserTokens(user);
+            revokeAllUserRefreshTokens(user);
             savedUserToken(user,jwtToken);
+            savedUserRefreshToken(user,refreshToken);
             String username = jwtService.extractUsername(jwtToken);
+            Date accessTokenExpiration = jwtService.extractExpiration(jwtToken);
+            Date refreshTokenExpiration = jwtService.extractExpiration(refreshToken);
             Role role = user.getRole();
             String name= user.getName();
             String address = user.getAddress();
@@ -131,6 +164,8 @@ public class AuthenticationService {
 
                     .accesstoken(jwtToken)
                     .refreshtoken(refreshToken)
+                    .accessTokenExpiration(accessTokenExpiration)
+                    .refreshTokenExpiration(refreshTokenExpiration)
                     .role(role)
                     .id(id)
                     .address(address)

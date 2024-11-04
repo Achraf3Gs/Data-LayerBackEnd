@@ -1,5 +1,6 @@
 package guesmish.sip.data_layer.users;
 
+import guesmish.sip.data_layer.refreshToken.RefreshToken;
 import guesmish.sip.data_layer.token.Token;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -41,6 +42,9 @@ public class User implements UserDetails {
 
     @OneToMany(mappedBy = "user")
     private List<Token> tokens;
+
+    @OneToMany(mappedBy = "user")
+    private List<RefreshToken> refreshTokens;
 
     public User(){}
 
